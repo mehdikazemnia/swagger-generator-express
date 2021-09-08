@@ -277,27 +277,19 @@ function describeSwagger(routePath: string, requestModelPath: string, responseMo
   try {
     const rootPath = resolve(__dirname).split('node_modules')[0];
 
-    glob.sync('./src/mods/**/*.http-gate.js').forEach(function (file) {
-      // console.log(file);
-      // let httpGateRegex = /^\.\/src\/mods\/(.*)\/(.*)\.http\.js$/;
-      let pathPluckRegex = /^\.\/src\/(.*)$/;
-      let plucked = pathPluckRegex.exec(file)[1];
-      let httpGate = require('./' + plucked);
-      httpGates.push(httpGate);
-    });
-
     glob.sync(join(rootPath, routePath)).forEach((file: string) => {
       if (!file) {
         console.log('No router file found in given folder');
         return;
       }
       let pathPluckRegex = /^\.\/src\/(.*)$/;
-      let entityName: string = pathPluckRegex.exec(file)[1];
+      let entityName = Array(pathPluckRegex.exec(file))[1];
       // entityName ==== device
 
       let responseModel;
       let requestModel;
       const route = join(rootPath, '/src/' + entityName + '/' + entityName + '.http-gate.js');
+      console.log(route);
       let router = require(route);
       if (!router) {
         console.log('Router missing');
