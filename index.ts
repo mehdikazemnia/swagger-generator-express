@@ -7,6 +7,7 @@ import { isEmpty, map, get, has } from 'lodash';
 import fs from 'fs';
 import { resolve, join } from 'path';
 import expressValidation from './validation/validate';
+import glob from 'glob';
 
 /**
  * This module will support all the functionality of swagger-spec-express with additonal
@@ -19,7 +20,7 @@ export = {
   swaggerize,
   createModel,
   serveSwagger,
-  validation: expressValidation
+  validation: expressValidation,
 };
 
 /**
@@ -275,14 +276,28 @@ function createModel(schema: any, responseModel: { [x: string]: any; hasOwnPrope
 function describeSwagger(routePath: string, requestModelPath: string, responseModelPath: any) {
   try {
     const rootPath = resolve(__dirname).split('node_modules')[0];
-    fs.readdirSync(join(rootPath, routePath)).forEach((file: any) => {
+
+    glob.sync('./src/mods/**/*.http-gate.js').forEach(function (file) {
+      // console.log(file);
+      // let httpGateRegex = /^\.\/src\/mods\/(.*)\/(.*)\.http\.js$/;
+      let pathPluckRegex = /^\.\/src\/(.*)$/;
+      let plucked = pathPluckRegex.exec(file)[1];
+      let httpGate = require('./' + plucked);
+      httpGates.push(httpGate);
+    });
+
+    glob.sync(join(rootPath, routePath)).forEach((file: string) => {
       if (!file) {
         console.log('No router file found in given folder');
         return;
       }
+      let pathPluckRegex = /^\.\/src\/(.*)$/;
+      let entityName: string = pathPluckRegex.exec(file)[1];
+      // entityName ==== device
+
       let responseModel;
       let requestModel;
-      const route = join(rootPath, routePath, file);
+      const route = join(rootPath, '/src/' + entityName + '/' + entityName + '.http-gate.js');
       let router = require(route);
       if (!router) {
         console.log('Router missing');
@@ -290,22 +305,14 @@ function describeSwagger(routePath: string, requestModelPath: string, responseMo
       }
       router = router.router || router;
 
-      if (responseModelPath) {
-        const responseModelFullPath = join(rootPath, responseModelPath, file);
-        if (fs.existsSync(responseModelFullPath)) {
-          responseModel = require(responseModelFullPath);
-        } else {
-          console.log('Response model path does not exist responseModelFullPath->', responseModelFullPath);
-        }
-      }
-
-      if (requestModelPath) {
-        const requestModelFullPath = join(rootPath, requestModelPath, file);
-        if (fs.existsSync(requestModelFullPath)) {
-          requestModel = require(requestModelFullPath);
-        } else {
-          console.log('Response model path does not exist requestModelFullPath->', requestModelFullPath);
-        }
+      const responseModelFullPath = join(rootPath, '/src/' + entityName + '/' + entityName + '.http-schema.js');
+      // const responseModelFullPath = join(rootPath, responseModelPath, file);
+      if (fs.existsSync(responseModelFullPath)) {
+        let httpSchema = require(responseModelFullPath);
+        responseModel = httpSchema.out;
+        requestModel = httpSchema.in;
+      } else {
+        console.log('oops', responseModelFullPath);
       }
 
       processRouter(router, requestModel, responseModel, file.split('.')[0]);
